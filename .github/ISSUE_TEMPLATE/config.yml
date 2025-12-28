@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Documentação
+    url: https://github.com/mupisystems/nfse_nacional#documentação
+    about: Consulte a documentação do projeto
+  - name: 💬 Discussões
+    url: https://github.com/mupisystems/nfse_nacional/discussions
+    about: Participe das discussões da comunidade
+
