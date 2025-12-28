@@ -271,7 +271,6 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 - 📖 **Documentação**: Consulte os exemplos em `examples/`
 - 🐛 **Bugs**: Reporte em [Issues](https://github.com/mupisystems/nfse_nacional/issues)
 - 💡 **Sugestões**: Abra uma [Issue](https://github.com/mupisystems/nfse_nacional/issues) com a tag `enhancement`
-- 📧 **Contato**: [Seu email ou link de contato]
 
 ## 🙏 Agradecimentos
 
