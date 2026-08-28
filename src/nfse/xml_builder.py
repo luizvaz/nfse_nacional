@@ -108,7 +108,7 @@ class XMLBuilder:
         xml_string = etree.tostring(
             root, encoding="utf-8", xml_declaration=True, pretty_print=True
         ).decode("utf-8")
-        print("xml_string", xml_string)
+        # print("xml_string", xml_string)
         return xml_string
 
     def _add_inf_dps(self, parent, dps: DPS):
@@ -132,7 +132,7 @@ class XMLBuilder:
         etree.SubElement(parent, f"{{{self.NS_NFSE}}}serie").text = str(serie)
 
         # nDPS - Número do DPS
-        n_dps = dps.numero_rps or "1"
+        n_dps = dps.numero_rps.lstrip("0") or "1"
         etree.SubElement(parent, f"{{{self.NS_NFSE}}}nDPS").text = str(n_dps)
 
         # dCompet - Data de competência (AAAA-MM-DD)
@@ -233,7 +233,7 @@ class XMLBuilder:
 
         # IM - Inscrição Municipal (opcional)
         if tomador.inscricao_municipal:
-            etree.SubElement(toma_elem, f"{{{self.NS_NFSE}}}IM").text = tomador.inscricao_municipal
+            etree.SubElement(toma_elem, f"{{{self.NS_NFSE}}}IM").text = tomador.inscricao_municipal.trim()
 
         # xNome - Nome/Razão Social (obrigatório)
         if tomador.razao_social:
@@ -296,11 +296,7 @@ class XMLBuilder:
         c_serv = etree.SubElement(serv_elem, f"{{{self.NS_NFSE}}}cServ")
 
         # cTribNac - Código de tributação nacional (6 dígitos)
-        c_trib_nac = (
-            servico.codigo_servico[:6]
-            if len(servico.codigo_servico) >= 6
-            else servico.codigo_servico.ljust(6, "0")
-        )
+        c_trib_nac = servico.codigo_servico
         etree.SubElement(c_serv, f"{{{self.NS_NFSE}}}cTribNac").text = c_trib_nac
 
         # cTribMun - Código de tributação municipal (opcional)
@@ -397,13 +393,20 @@ class XMLBuilder:
 
         # totTrib - Totais de tributos (obrigatório conforme validação)
         tot_trib = etree.SubElement(trib, f"{{{self.NS_NFSE}}}totTrib")
-        if dps.prestador.optante_simples_nacional and dps.prestador.p_tot_trib_sn is not None:
-            etree.SubElement(tot_trib, f"{{{self.NS_NFSE}}}pTotTribSN").text = self._format_decimal(
-                dps.prestador.p_tot_trib_sn
-            )
+        if dps.prestador.optante_simples_nacional:
+            if dps.prestador.p_tot_trib_sn is not None:
+                etree.SubElement(tot_trib, f"{{{self.NS_NFSE}}}pTotTribSN").text = self._format_decimal(
+                    dps.prestador.p_tot_trib_sn
+                )
         else:
+            # Se não for optante do SN
+            vTotTrib = etree.SubElement(tot_trib, f"{{{self.NS_NFSE}}}vTotTrib")
+            etree.SubElement(vTotTrib, f"{{{self.NS_NFSE}}}vTotTribFed").text = "0.00"
+            etree.SubElement(vTotTrib, f"{{{self.NS_NFSE}}}vTotTribEst").text = "0.00"
+            etree.SubElement(vTotTrib, f"{{{self.NS_NFSE}}}vTotTribMun").text = "0.00"
+            
             # Se não for optante do SN ou não tiver p_tot_trib_sn, usa indTotTrib=0
-            etree.SubElement(tot_trib, f"{{{self.NS_NFSE}}}indTotTrib").text = "0"
+            #etree.SubElement(tot_trib, f"{{{self.NS_NFSE}}}indTotTrib").text = "0"
 
     def validate_xml(self, xml_string: str) -> bool:
         """

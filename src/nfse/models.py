@@ -149,7 +149,7 @@ class DPS:
         serie_dps = self.serie_rps or "NF"
 
         # Número do DPS
-        numero_dps = self.numero_rps or "1"
+        numero_dps = str(self.numero_rps.lstrip("0") or "1").zfill(15)
 
         # Constrói o ID
         return f"DPS{cod_municipio}{tipo_inscricao}{cpf_cnpj_emitente}{serie_dps}{numero_dps}"
