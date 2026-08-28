@@ -118,6 +118,34 @@ class APIClient:
         except requests.exceptions.RequestException as e:
             raise Exception(f"Erro ao enviar DPS para a API: {str(e)}") from e
 
+    def consultar_dps(
+            self, codigo: str
+    ) -> Dict[str, Any]:
+        """
+        Consulta uma nota fiscal já emitida
+
+        Args:
+            numero_nota: Número da nota fiscal
+            codigo_verificacao: Código de verificação (opcional)
+
+        Returns:
+            Dados da nota fiscal
+        """
+        endpoint = f"{self.base_url}/dps/{codigo}"
+
+        try:
+            response = self.session.get(endpoint, timeout=30)
+            self._check_response(response)
+
+            try:
+                return response.json()
+            except (ValueError, TypeError):
+                # Se não conseguir fazer parse do JSON, retorna como dict
+                return {"status_code": response.status_code, "content": response.text}
+
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"Erro ao consultar nota: {str(e)}") from e
+
     def consultar_nota(
         self, numero_nota: str, codigo_verificacao: Optional[str] = None
     ) -> Dict[str, Any]:
