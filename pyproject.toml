@@ -8,7 +8,14 @@ version = "0.1.0"
 description = "Projeto de demonstração para utilização da API de emissão de notas fiscais de serviço (NFSe)"
 readme = "README.md"
 requires-python = ">=3.8"
-dependencies = []
+dependencies = [
+    "requests>=2.31.0",
+    "requests_pkcs12>=1.20",
+    "lxml>=5.0.0",
+    "xmlschema>=3.0.0",
+    "signxml>=4.0.0",
+    "python-dateutil>=2.9.0",
+]
 
 [project.optional-dependencies]
 dev = [
