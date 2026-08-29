@@ -15,6 +15,10 @@ try:
 
     HAS_PKCS12_ADAPTER = True
 except ImportError:
+    # Mantém o nome definido (como None) mesmo sem a dependência opcional
+    # instalada, para que o módulo continue "patchable"/testável (ex.: em
+    # testes com unittest.mock.patch) sem exigir requests-pkcs12 instalado.
+    Pkcs12Adapter = None
     HAS_PKCS12_ADAPTER = False
 
 

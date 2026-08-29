@@ -12,7 +12,7 @@ from typing import Optional
 import xmlschema
 from lxml import etree
 
-from .models import DPS, Endereco, Prestador, Servico, Tomador
+from .models import DPS, IBSCBS, Endereco, IBSCBSDestinatario, Prestador, Servico, Tomador
 
 
 class XMLBuilder:
@@ -165,6 +165,120 @@ class XMLBuilder:
 
         # Valores (obrigatório)
         self._add_valores(parent, dps)
+
+        # IBSCBS - Grupo de informações declaradas pelo emitente referentes
+        # ao IBS e à CBS (Reforma Tributária). Elemento de mesmo nível que
+        # <serv> e <valores>, adicionado por último conforme sequência do XSD.
+        if getattr(dps, "ibscbs", None):
+            self._add_ibscbs(parent, dps.ibscbs)
+
+    def _add_ibscbs(self, parent, ibscbs: IBSCBS):
+        """Adiciona o grupo IBSCBS declarado pelo emitente (TCRTCInfoIBSCBS)"""
+        ibscbs_elem = etree.SubElement(parent, f"{{{self.NS_NFSE}}}IBSCBS")
+
+        # finNFSe - Finalidade da emissão (obrigatório, único valor válido: "0")
+        etree.SubElement(ibscbs_elem, f"{{{self.NS_NFSE}}}finNFSe").text = str(ibscbs.fin_nfse)
+
+        # indFinal - Uso/consumo pessoal, art. 57 (opcional)
+        if ibscbs.ind_final is not None:
+            etree.SubElement(ibscbs_elem, f"{{{self.NS_NFSE}}}indFinal").text = str(
+                ibscbs.ind_final
+            )
+
+        # cIndOp - Código indicador da operação de fornecimento (obrigatório)
+        etree.SubElement(ibscbs_elem, f"{{{self.NS_NFSE}}}cIndOp").text = str(ibscbs.c_ind_op)
+
+        # tpOper - Tipo de operação com entes governamentais / bens imóveis (opcional)
+        if ibscbs.tp_oper is not None:
+            etree.SubElement(ibscbs_elem, f"{{{self.NS_NFSE}}}tpOper").text = str(ibscbs.tp_oper)
+
+        # tpEnteGov - Tipo de ente governamental (opcional)
+        if ibscbs.tp_ente_gov is not None:
+            etree.SubElement(ibscbs_elem, f"{{{self.NS_NFSE}}}tpEnteGov").text = str(
+                ibscbs.tp_ente_gov
+            )
+
+        # indDest - A respeito do destinatário dos serviços (obrigatório)
+        etree.SubElement(ibscbs_elem, f"{{{self.NS_NFSE}}}indDest").text = str(ibscbs.ind_dest)
+
+        # dest - Destinatário (obrigatório quando indDest = "1")
+        if ibscbs.destinatario:
+            self._add_ibscbs_destinatario(ibscbs_elem, ibscbs.destinatario)
+
+        # valores/trib/gIBSCBS - Situação e classificação tributária (obrigatório)
+        valores_elem = etree.SubElement(ibscbs_elem, f"{{{self.NS_NFSE}}}valores")
+        trib_elem = etree.SubElement(valores_elem, f"{{{self.NS_NFSE}}}trib")
+        g_ibscbs = etree.SubElement(trib_elem, f"{{{self.NS_NFSE}}}gIBSCBS")
+
+        tributacao = ibscbs.trib
+
+        # CST - Código de Situação Tributária do IBS/CBS (obrigatório, 3 dígitos)
+        etree.SubElement(g_ibscbs, f"{{{self.NS_NFSE}}}CST").text = str(tributacao.cst)
+
+        # cClassTrib - Código de Classificação Tributária (obrigatório, 6 dígitos)
+        etree.SubElement(g_ibscbs, f"{{{self.NS_NFSE}}}cClassTrib").text = str(
+            tributacao.c_class_trib
+        )
+
+        # cCredPres - Código do Crédito Presumido (opcional, 2 dígitos)
+        if tributacao.c_cred_pres:
+            etree.SubElement(g_ibscbs, f"{{{self.NS_NFSE}}}cCredPres").text = str(
+                tributacao.c_cred_pres
+            )
+
+        # gTribRegular - Tributação regular (opcional)
+        if tributacao.cst_regular and tributacao.c_class_trib_regular:
+            g_trib_regular = etree.SubElement(g_ibscbs, f"{{{self.NS_NFSE}}}gTribRegular")
+            etree.SubElement(g_trib_regular, f"{{{self.NS_NFSE}}}CSTReg").text = str(
+                tributacao.cst_regular
+            )
+            etree.SubElement(g_trib_regular, f"{{{self.NS_NFSE}}}cClassTribReg").text = str(
+                tributacao.c_class_trib_regular
+            )
+
+        # gDif - Diferimento (opcional)
+        if (
+            tributacao.p_dif_uf is not None
+            or tributacao.p_dif_mun is not None
+            or tributacao.p_dif_cbs is not None
+        ):
+            g_dif = etree.SubElement(g_ibscbs, f"{{{self.NS_NFSE}}}gDif")
+            etree.SubElement(g_dif, f"{{{self.NS_NFSE}}}pDifUF").text = self._format_decimal(
+                tributacao.p_dif_uf
+            )
+            etree.SubElement(g_dif, f"{{{self.NS_NFSE}}}pDifMun").text = self._format_decimal(
+                tributacao.p_dif_mun
+            )
+            etree.SubElement(g_dif, f"{{{self.NS_NFSE}}}pDifCBS").text = self._format_decimal(
+                tributacao.p_dif_cbs
+            )
+
+    def _add_ibscbs_destinatario(self, parent, destinatario: IBSCBSDestinatario):
+        """Adiciona o grupo dest (TCRTCInfoDest) do IBSCBS"""
+        dest_elem = etree.SubElement(parent, f"{{{self.NS_NFSE}}}dest")
+
+        # Choice: CNPJ ou CPF
+        if len(destinatario.cpf_cnpj) == 11:
+            etree.SubElement(dest_elem, f"{{{self.NS_NFSE}}}CPF").text = destinatario.cpf_cnpj
+        elif len(destinatario.cpf_cnpj) == 14:
+            etree.SubElement(dest_elem, f"{{{self.NS_NFSE}}}CNPJ").text = destinatario.cpf_cnpj
+        else:
+            raise ValueError("CPF/CNPJ do destinatário deve ter 11 ou 14 dígitos")
+
+        # xNome - Nome/Razão social (obrigatório)
+        etree.SubElement(dest_elem, f"{{{self.NS_NFSE}}}xNome").text = destinatario.razao_social
+
+        # end - Endereço (opcional)
+        if destinatario.endereco:
+            self._add_endereco(dest_elem, destinatario.endereco)
+
+        # fone - Telefone (opcional)
+        if destinatario.telefone:
+            etree.SubElement(dest_elem, f"{{{self.NS_NFSE}}}fone").text = destinatario.telefone
+
+        # email - E-mail (opcional)
+        if destinatario.email:
+            etree.SubElement(dest_elem, f"{{{self.NS_NFSE}}}email").text = destinatario.email
 
     def _add_prestador(self, parent, prestador: Prestador):
         """Adiciona dados do prestador (TCInfoPrestador)"""
@@ -404,7 +518,7 @@ class XMLBuilder:
             etree.SubElement(vTotTrib, f"{{{self.NS_NFSE}}}vTotTribFed").text = "0.00"
             etree.SubElement(vTotTrib, f"{{{self.NS_NFSE}}}vTotTribEst").text = "0.00"
             etree.SubElement(vTotTrib, f"{{{self.NS_NFSE}}}vTotTribMun").text = "0.00"
-            
+
             # Se não for optante do SN ou não tiver p_tot_trib_sn, usa indTotTrib=0
             #etree.SubElement(tot_trib, f"{{{self.NS_NFSE}}}indTotTrib").text = "0"
 

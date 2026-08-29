@@ -88,6 +88,60 @@ class Servico:
 
 
 @dataclass
+class IBSCBSTributacao:
+    """
+    Modelo de dados do grupo gIBSCBS (TCRTCInfoTributosSitClas)
+
+    Situação e classificação tributária do IBS e da CBS declaradas pelo emitente.
+    """
+
+    cst: str  # CST - Código de Situação Tributária do IBS/CBS (3 dígitos)
+    c_class_trib: str  # cClassTrib - Código de Classificação Tributária (6 dígitos)
+    c_cred_pres: Optional[str] = None  # Código e Classificação do Crédito Presumido (2 dígitos)
+    # Tributação regular (obrigatório apenas quando a operação tem tratamento
+    # diferenciado e precisa informar como seria a tributação regular)
+    cst_regular: Optional[str] = None  # CSTReg (3 dígitos)
+    c_class_trib_regular: Optional[str] = None  # cClassTribReg (6 dígitos)
+    # Diferimento (grupo gDif)
+    p_dif_uf: Optional[Decimal] = None  # pDifUF - % de diferimento do IBS estadual
+    p_dif_mun: Optional[Decimal] = None  # pDifMun - % de diferimento do IBS municipal
+    p_dif_cbs: Optional[Decimal] = None  # pDifCBS - % de diferimento da CBS
+
+
+@dataclass
+class IBSCBSDestinatario:
+    """Modelo de dados do grupo dest (TCRTCInfoDest) - Destinatário do serviço para fins de IBS/CBS"""
+
+    cpf_cnpj: str
+    razao_social: str
+    endereco: Optional[Endereco] = None
+    telefone: Optional[str] = None
+    email: Optional[str] = None
+
+
+@dataclass
+class IBSCBS:
+    """
+    Modelo de dados do grupo IBSCBS declarado pelo emitente (TCRTCInfoIBSCBS)
+
+    Corresponde ao elemento <IBSCBS> do leiaute da NFSe Nacional (Reforma Tributária,
+    v1.01), que é IRMÃO de <serv> e <valores> dentro de <infDPS> — não fica aninhado
+    dentro de <serv>. Os campos de valores calculados (vBC, pIBS, vIBS, pCBS, vCBS
+    etc.) NÃO são enviados na DPS: eles são calculados pelo sistema nacional e
+    retornados no XML da NFS-e (grupo TCRTCIBSCBS), fora do escopo deste builder.
+    """
+
+    c_ind_op: str  # cIndOp - Código indicador da operação de fornecimento (6 dígitos)
+    ind_dest: str  # indDest - "0" destinatário=tomador, "1" destinatário diferente
+    trib: IBSCBSTributacao  # grupo gIBSCBS (via valores/trib/gIBSCBS)
+    fin_nfse: str = "0"  # finNFSe - "0" = NFS-e regular (único valor válido hoje)
+    ind_final: Optional[str] = None  # indFinal - "0" ou "1" (uso/consumo pessoal, art. 57)
+    tp_oper: Optional[str] = None  # tpOper - 1 a 5 (ente governamental / bens imóveis)
+    tp_ente_gov: Optional[str] = None  # tpEnteGov - 1 a 4
+    destinatario: Optional[IBSCBSDestinatario] = None  # dest (obrigatório se ind_dest="1")
+
+
+@dataclass
 class DPS:
     """
     Modelo de dados da Declaração de Prestação de Serviço (DPS)
@@ -115,6 +169,7 @@ class DPS:
     valor_total_liquido: Optional[Decimal] = None
     observacoes: Optional[str] = None
     trib_issqn: int = 1  # 1-Operação tributável, 2-Imunidade, 3-Exportação, 4-Não Incidência
+    ibscbs: Optional[IBSCBS] = None  # Grupo IBSCBS declarado pelo emitente (Reforma Tributária)
 
     def get_id(self) -> str:
         """
@@ -145,8 +200,10 @@ class DPS:
         # CPF/CNPJ do emitente (sem formatação)
         cpf_cnpj_emitente = cpf_cnpj if len(cpf_cnpj) == 14 else cpf_cnpj.zfill(14)
 
-        # Série do DPS
-        serie_dps = self.serie_rps or "NF"
+        # Série do DPS (5 dígitos numéricos, conforme padrão "DPS[0-9]{42}" do XSD:
+        # cod.mun(7) + tipo inscrição(1) + inscrição federal(14) + série(5) + número(15))
+        serie_dps = str(self.serie_rps or "1").lstrip("0") or "0"
+        serie_dps = serie_dps.zfill(5)
 
         # Número do DPS
         numero_dps = str(self.numero_rps.lstrip("0") or "1").zfill(15)
