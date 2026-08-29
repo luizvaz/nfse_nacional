@@ -5,7 +5,24 @@ Módulo principal para integração com a API de NFSe Nacional
 from .api_client import Ambiente, APIClient
 from .config import NaturezaOperacao, RegimeEspecialTributacao
 from .emissor import NFSeEmissor
-from .models import DPS, Endereco, NotaFiscal, Prestador, Servico, Tomador, Tributo
+from .exceptions import (
+    NFSeAPIError,
+    NFSeConnectionError,
+    NFSeError,
+    NFSeNotFoundError,
+)
+from .models import (
+    DPS,
+    IBSCBS,
+    Endereco,
+    IBSCBSDestinatario,
+    IBSCBSTributacao,
+    NotaFiscal,
+    Prestador,
+    Servico,
+    Tomador,
+    Tributo,
+)
 from .signer import XMLSigner
 from .xml_builder import XMLBuilder
 
@@ -19,9 +36,16 @@ __all__ = [
     "Servico",
     "Tributo",
     "Endereco",
+    "IBSCBS",
+    "IBSCBSTributacao",
+    "IBSCBSDestinatario",
     "NotaFiscal",
     "XMLBuilder",
     "XMLSigner",
     "NaturezaOperacao",
     "RegimeEspecialTributacao",
+    "NFSeError",
+    "NFSeAPIError",
+    "NFSeNotFoundError",
+    "NFSeConnectionError",
 ]

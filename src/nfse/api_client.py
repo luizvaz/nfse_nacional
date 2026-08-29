@@ -6,9 +6,11 @@ A autenticação é feita via certificado digital A1 (.pfx)
 import base64
 import gzip
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import requests
+
+from .exceptions import NFSeAPIError, NFSeConnectionError, NFSeNotFoundError
 
 try:
     from requests_pkcs12 import Pkcs12Adapter
@@ -79,16 +81,21 @@ class APIClient:
 
     def enviar_dps(self, xml_dps_assinado: str) -> Dict[str, Any]:
         """
-        Envia o DPS assinado para a API
+        Envia o DPS assinado para a API (POST /nfse)
 
         O XML é comprimido com gzip e codificado em base64 antes do envio.
         O payload é enviado como JSON: {"dpsXmlGZipB64": dps_b64}
 
         Args:
-            xml_dps_assinado: XML do DPS já assinado
+            xml_dps_assinado: XML do DPS já assinado digitalmente
 
         Returns:
-            Resposta da API com o resultado do envio
+            Resposta da API com os dados da NFS-e gerada, incluindo a
+            chave de acesso (campo "chaveAcesso")
+
+        Raises:
+            NFSeAPIError: Se a API rejeitar o DPS
+            NFSeConnectionError: Se houver falha de comunicação
         """
         endpoint = f"{self.base_url}/nfse/"
 
@@ -120,22 +127,28 @@ class APIClient:
                 }
 
         except requests.exceptions.RequestException as e:
-            raise Exception(f"Erro ao enviar DPS para a API: {str(e)}") from e
+            raise NFSeConnectionError(f"Erro ao enviar DPS para a API: {e}") from e
 
-    def consultar_dps(
-            self, codigo: str
-    ) -> Dict[str, Any]:
+    def consultar_dps(self, id_dps: str) -> Dict[str, Any]:
         """
-        Consulta uma nota fiscal já emitida
+        Consulta a NFS-e gerada a partir de uma DPS (GET /dps/{id})
+
+        O identificador da DPS pode ser obtido com `DPS.get_id()` e segue a
+        regra de formação: código IBGE do município (7) + tipo de inscrição
+        (1) + inscrição federal (14) + série (5) + número (15).
 
         Args:
-            numero_nota: Número da nota fiscal
-            codigo_verificacao: Código de verificação (opcional)
+            id_dps: Identificador da DPS (com ou sem o prefixo "DPS")
 
         Returns:
-            Dados da nota fiscal
+            Dados da NFS-e correspondente
+
+        Raises:
+            NFSeNotFoundError: Se a DPS ainda não gerou NFS-e (código E2404)
+            NFSeAPIError: Demais erros retornados pela API
+            NFSeConnectionError: Se houver falha de comunicação
         """
-        endpoint = f"{self.base_url}/dps/{codigo}"
+        endpoint = f"{self.base_url}/dps/{id_dps}"
 
         try:
             response = self.session.get(endpoint, timeout=30)
@@ -148,22 +161,27 @@ class APIClient:
                 return {"status_code": response.status_code, "content": response.text}
 
         except requests.exceptions.RequestException as e:
-            raise Exception(f"Erro ao consultar nota: {str(e)}") from e
+            raise NFSeConnectionError(f"Erro ao consultar nota: {e}") from e
 
-    def consultar_nota(
-        self, numero_nota: str, codigo_verificacao: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def consultar_nota(self, chave_acesso: str) -> Dict[str, Any]:
         """
-        Consulta uma nota fiscal já emitida
+        Consulta uma NFS-e pela chave de acesso (GET /nfse/{chaveAcesso})
+
+        A chave de acesso é retornada no campo "chaveAcesso" da resposta de
+        `enviar_dps()` e de `consultar_dps()`.
 
         Args:
-            numero_nota: Número da nota fiscal
-            codigo_verificacao: Código de verificação (opcional)
+            chave_acesso: Chave de acesso da NFS-e (50 caracteres)
 
         Returns:
-            Dados da nota fiscal
+            Dados da NFS-e
+
+        Raises:
+            NFSeNotFoundError: Se a NFS-e não for encontrada
+            NFSeAPIError: Demais erros retornados pela API
+            NFSeConnectionError: Se houver falha de comunicação
         """
-        endpoint = f"{self.base_url}/nfse/{codigo_verificacao}"
+        endpoint = f"{self.base_url}/nfse/{chave_acesso}"
 
         try:
             response = self.session.get(endpoint, timeout=30)
@@ -176,7 +194,7 @@ class APIClient:
                 return {"status_code": response.status_code, "content": response.text}
 
         except requests.exceptions.RequestException as e:
-            raise Exception(f"Erro ao consultar nota: {str(e)}") from e
+            raise NFSeConnectionError(f"Erro ao consultar nota: {e}") from e
 
     def cancelar_nota(self, numero_nota: str, motivo: str) -> Dict[str, Any]:
         """
@@ -188,11 +206,43 @@ class APIClient:
         """
         Verifica se a resposta da API está OK
 
+        Extrai o código e a descrição do erro retornados pela API, quando
+        presentes, para que o chamador possa tratar cada situação de forma
+        específica (ver src/nfse/exceptions.py).
+
         Args:
             response: Objeto Response do requests
 
         Raises:
-            Exception: Se a resposta não estiver OK
+            NFSeNotFoundError: Recurso não encontrado (HTTP 404). Ex: uma DPS
+                que ainda não gerou NFS-e (código "E2404")
+            NFSeAPIError: Demais erros retornados pela API
         """
-        if not response.ok:
-            raise Exception(f"Erro {response.status_code}: {response.text}")
+        if response.ok:
+            return
+
+        # A API retorna os detalhes do erro em JSON, no campo "erro"
+        codigo = None
+        descricao = None
+        payload = None
+
+        try:
+            payload = response.json()
+        except (ValueError, TypeError):
+            payload = None
+
+        if isinstance(payload, dict):
+            erro = payload.get("erro")
+            if isinstance(erro, dict):
+                codigo = erro.get("codigo")
+                descricao = erro.get("descricao")
+
+        classe_erro = NFSeNotFoundError if response.status_code == 404 else NFSeAPIError
+
+        raise classe_erro(
+            status_code=response.status_code,
+            texto=response.text,
+            codigo=codigo,
+            descricao=descricao,
+            payload=payload,
+        )

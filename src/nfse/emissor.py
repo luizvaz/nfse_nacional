@@ -58,18 +58,32 @@ class NFSeEmissor:
         print("Nota fiscal emitida com sucesso!")
         return resposta
 
-    def consultar_nota(self, numero_nota: str, codigo_verificacao: Optional[str] = None) -> dict:
+    def consultar_nota(self, chave_acesso: str) -> dict:
         """
-        Consulta uma nota fiscal já emitida
+        Consulta uma NFS-e já emitida, pela chave de acesso
 
         Args:
-            numero_nota: Número da nota fiscal
-            codigo_verificacao: Código de verificação (opcional)
+            chave_acesso: Chave de acesso da NFS-e
 
         Returns:
-            Dados da nota fiscal
+            Dados da NFS-e
         """
-        return self.api_client.consultar_nota(numero_nota, codigo_verificacao)
+        return self.api_client.consultar_nota(chave_acesso)
+
+    def consultar_dps(self, id_dps: str) -> dict:
+        """
+        Consulta a NFS-e gerada a partir de uma DPS
+
+        Args:
+            id_dps: Identificador da DPS (obtido com `DPS.get_id()`)
+
+        Returns:
+            Dados da NFS-e correspondente
+
+        Raises:
+            NFSeNotFoundError: Se a DPS ainda não gerou NFS-e
+        """
+        return self.api_client.consultar_dps(id_dps)
 
     def cancelar_nota(self, numero_nota: str, motivo: str) -> dict:
         """
