@@ -16,7 +16,7 @@ root_ = Path(__file__).parent
 sys.path.insert(0, str(root_))
 
 # Corrigido: adiciona o diretório PAI de nfse
-nfse_ = Path('/opt/nfse_nacional/')
+nfse_ = Path("/opt/nfse_nacional/")
 sys.path.insert(0, str(nfse_))
 
 import xml.etree.ElementTree as ET
@@ -62,9 +62,9 @@ except ImportError:
 # o Anexo VIII para o seu NBS (1.2205.20.00) antes de rodar em produção real.
 #
 # CONFIRME ESSES 3 VALORES COM SEU CONTADOR ANTES DE EMITIR EM PRODUÇÃO REAL.
-CST_IBS_CBS_PADRAO = "000"          # Tributação integral
-C_CLASS_TRIB_PADRAO = "000001"      # Situações tributadas integralmente pelo IBS e CBS
-C_IND_OP_PADRAO = "100301"          # Serviços gerais em operação onerosa (CONFERIR no Anexo VIII)
+CST_IBS_CBS_PADRAO = "000"  # Tributação integral
+C_CLASS_TRIB_PADRAO = "000001"  # Situações tributadas integralmente pelo IBS e CBS
+C_IND_OP_PADRAO = "100301"  # Serviços gerais em operação onerosa (CONFERIR no Anexo VIII)
 
 
 def main():
@@ -81,7 +81,9 @@ def main():
                     os.makedirs("./rps/processados", exist_ok=True)
                     shutil.move(full, os.path.join("./rps/processados", arq))
 
-                    nfse_file = os.path.join("./rps/processados", os.path.splitext(arq)[0] + ".nfse")
+                    nfse_file = os.path.join(
+                        "./rps/processados", os.path.splitext(arq)[0] + ".nfse"
+                    )
                     with open(nfse_file, "w", encoding="utf-8") as f:
                         f.write(json.dumps(resultado, ensure_ascii=False, indent=4))
 
@@ -91,19 +93,19 @@ def main():
                     print()
                     continue
 
-
             except Exception as e:
                 print(f"Erro ao processar: {arq}")
                 print(f" {e}")
                 traceback.print_exc()
                 continue
 
+
 def emite_nf(arquivo, dados):
     print(f"Processando: {arquivo}")
 
     pfx_path = os.getenv("PFX_PATH", "./cert.pfx")
     pfx_password = os.getenv("PFX_PASSWORD", "senha_do_certificado")
-    #ambiente = Ambiente.PRODUCAO_RESTRITA
+    # ambiente = Ambiente.PRODUCAO_RESTRITA
     ambiente = Ambiente.PRODUCAO_REAL
 
     emissor = NFSeEmissor(pfx_path=pfx_path, pfx_password=pfx_password, ambiente=ambiente)
@@ -115,7 +117,7 @@ def emite_nf(arquivo, dados):
         # Obrigatório
         cpf_cnpj="20637193000101",  # CNPJ sem formatação
         inscricao_municipal="23086401",
-        #razao_social="COLEGIO VETOR LTDA",
+        # razao_social="COLEGIO VETOR LTDA",
         optante_simples_nacional=False,
         op_simp_nac=1,  # 1-Não Optante, 2-MEI, 3-ME/EPP
     )
@@ -176,18 +178,22 @@ def emite_nf(arquivo, dados):
 
     servico = Servico(
         # Obrigatórios
-        codigo_servico=re.sub(r"\D", "", dados["cTribNac"]),  # Ver lista em https://www.gov.br/nfse/pt-br/mei-e-demais-empresas/codigos-de-tributacao-nacional-nbs
+        codigo_servico=re.sub(
+            r"\D", "", dados["cTribNac"]
+        ),  # Ver lista em https://www.gov.br/nfse/pt-br/mei-e-demais-empresas/codigos-de-tributacao-nacional-nbs
         descricao=servico_json["descricao"],
         valor_servico=valor_servico,  # Valor do serviço
         codigo_tributacao_municipal=dados["cTribMun"],
         # Opcionais - Valores
-        #valor_deducoes=Decimal("0.00"),  # Valor das deduções
-        #valor_desconto=Decimal("0.00"),  # Valor do desconto
-        #valor_liquido=Decimal("100.00"),  # Valor líquido
+        # valor_deducoes=Decimal("0.00"),  # Valor das deduções
+        # valor_desconto=Decimal("0.00"),  # Valor do desconto
+        # valor_liquido=Decimal("100.00"),  # Valor líquido
         # Opcionais - Tributação
         iss_retido=False,  # True se o ISSQN for retido na fonte
         codigo_municipio="1302603",  # Código IBGE do município de prestação (Ver lista em https://www.ibge.gov.br/explica/codigos-dos-municipios.php)
-        codigo_nbs=re.sub(r"\D", "", dados["cNBS"]),  # https://www.gov.br/mdic/pt-br/images/REPOSITORIO/scs/decos/NBS/Anexoa_Ia_NBSa_2.0a_coma_alteraa_esa_6.12.18.pdf
+        codigo_nbs=re.sub(
+            r"\D", "", dados["cNBS"]
+        ),  # https://www.gov.br/mdic/pt-br/images/REPOSITORIO/scs/decos/NBS/Anexoa_Ia_NBSa_2.0a_coma_alteraa_esa_6.12.18.pdf
         tributos=[tributo_iss],
     )
 
@@ -225,8 +231,9 @@ def emite_nf(arquivo, dados):
         prestador=prestador,
         servicos=[servico],
         # Opcionais - Identificação
-        tp_amb=1 if ambiente == Ambiente.PRODUCAO_REAL else 2, # 1-Produção, 2-Homologação
-        numero_rps=dados["num_nf"].lstrip("0") or "0",  # Número do RPS (Recibo de Prestação de Serviço)
+        tp_amb=1 if ambiente == Ambiente.PRODUCAO_REAL else 2,  # 1-Produção, 2-Homologação
+        numero_rps=dados["num_nf"].lstrip("0")
+        or "0",  # Número do RPS (Recibo de Prestação de Serviço)
         serie_rps="00002",  # Série do RPS
         data_emissao=datetime.strptime(dados["data_emissao"], "%d/%m/%Y"),
         c_loc_emi="1302603",  # Código IBGE do município emissor (obrigatório para gerar o ID)
@@ -259,6 +266,7 @@ def emite_nf(arquivo, dados):
     except Exception as e:
         print(f"✗ Erro ao emitir nota fiscal: {str(e)}")
         return False
+
 
 if __name__ == "__main__":
     main()

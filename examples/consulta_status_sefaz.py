@@ -75,9 +75,35 @@ CSTAT_SERVICO_EM_OPERACAO = "107"
 
 # UFs aceitas pela SEFAZ (inclui os ambientes nacionais AN e EX)
 UFS_VALIDAS = {
-    "RO", "AC", "AM", "RR", "PA", "AP", "TO", "MA", "PI", "CE", "RN", "PB",
-    "PE", "AL", "SE", "BA", "MG", "ES", "RJ", "SP", "PR", "SC", "RS", "MS",
-    "MT", "GO", "DF", "AN", "EX",
+    "RO",
+    "AC",
+    "AM",
+    "RR",
+    "PA",
+    "AP",
+    "TO",
+    "MA",
+    "PI",
+    "CE",
+    "RN",
+    "PB",
+    "PE",
+    "AL",
+    "SE",
+    "BA",
+    "MG",
+    "ES",
+    "RJ",
+    "SP",
+    "PR",
+    "SC",
+    "RS",
+    "MS",
+    "MT",
+    "GO",
+    "DF",
+    "AN",
+    "EX",
 }
 
 # Campos extraídos da resposta (retStatusServico), na ordem de exibição.
@@ -180,8 +206,7 @@ def consultar_status(
         from pynfe.processamento.comunicacao import ComunicacaoSefaz
     except ImportError as e:
         raise ImportError(
-            "A biblioteca PyNFe não está instalada. "
-            "Instale com: pip install PyNFe"
+            "A biblioteca PyNFe não está instalada. Instale com: pip install PyNFe"
         ) from e
 
     con = ComunicacaoSefaz(uf.upper(), pfx_path, pfx_password, homologacao)
@@ -253,8 +278,7 @@ def main(argv: Optional[list] = None) -> int:
     uf = args.uf.upper()
     if uf not in UFS_VALIDAS:
         print(
-            f"Erro: UF inválida: {args.uf!r}. "
-            f"Valores aceitos: {', '.join(sorted(UFS_VALIDAS))}",
+            f"Erro: UF inválida: {args.uf!r}. Valores aceitos: {', '.join(sorted(UFS_VALIDAS))}",
             file=sys.stderr,
         )
         return EXIT_ERRO_CONFIG
@@ -321,9 +345,7 @@ def main(argv: Optional[list] = None) -> int:
         print(formatar_saida(campos))
         print()
         print(
-            "✓ Serviço em operação"
-            if em_operacao
-            else "✗ Serviço indisponível ou com restrições"
+            "✓ Serviço em operação" if em_operacao else "✗ Serviço indisponível ou com restrições"
         )
 
     if args.xml:

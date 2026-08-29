@@ -83,6 +83,7 @@ class TestCheckResponse(unittest.TestCase):
         if json_valido:
             resposta.json = lambda: json.loads(corpo)
         else:
+
             def _raise():
                 raise ValueError("resposta não é JSON")
 
@@ -101,9 +102,7 @@ class TestCheckResponse(unittest.TestCase):
                 "tipoAmbiente": 1,
                 "erro": {
                     "codigo": "E2404",
-                    "descricao": (
-                        "Não foi gerada uma NFS-e com o identificador de DPS informado"
-                    ),
+                    "descricao": ("Não foi gerada uma NFS-e com o identificador de DPS informado"),
                 },
             }
         )
@@ -120,9 +119,7 @@ class TestCheckResponse(unittest.TestCase):
 
     def test_erro_generico_levanta_api_error(self):
         """Erros que não são 404 devem virar NFSeAPIError"""
-        corpo = json.dumps(
-            {"erro": {"codigo": "E0001", "descricao": "Requisição inválida"}}
-        )
+        corpo = json.dumps({"erro": {"codigo": "E0001", "descricao": "Requisição inválida"}})
 
         with self.assertRaises(NFSeAPIError) as ctx:
             self.client._check_response(self._resposta(400, corpo))
