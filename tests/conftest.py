@@ -72,7 +72,7 @@ def servico_exemplo():
         aliquota=Decimal("5.00"), valor=Decimal("50.00"), base_calculo=Decimal("1000.00")
     )
     return Servico(
-        codigo_servico="1401",
+        codigo_servico="140101",  # cTribNac exige 6 dígitos (código de tributação nacional)
         descricao="Desenvolvimento de software",
         valor_servico=Decimal("1000.00"),
         codigo_municipio="3550308",

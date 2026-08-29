@@ -235,5 +235,94 @@ class TestXMLBuilder:
         assert "1" in dps_id  # Tipo de inscrição para CPF
 
 
+class TestIBSCBS:
+    """Testes para o grupo IBSCBS (Reforma Tributária, leiaute v1.01)"""
+
+    def test_ibscbs_element_is_sibling_of_serv_and_valores(
+        self, prestador_exemplo, tomador_exemplo, servico_exemplo
+    ):
+        """
+        O elemento <IBSCBS> declarado pelo emitente é IRMÃO de <serv> e
+        <valores> dentro de <infDPS> - não deve ficar aninhado em <serv>.
+        """
+        from src.nfse.models import IBSCBS, IBSCBSTributacao
+
+        tributacao = IBSCBSTributacao(cst="000", c_class_trib="101001")
+        ibscbs = IBSCBS(c_ind_op="000001", ind_dest="0", trib=tributacao)
+
+        dps = DPS(
+            prestador=prestador_exemplo,
+            tomador=tomador_exemplo,
+            servicos=[servico_exemplo],
+            numero_rps="100000000000001",
+            serie_rps="00001",
+            c_loc_emi="3550308",
+            ibscbs=ibscbs,
+        )
+
+        builder = XMLBuilder(versao="1.01")
+        xml = builder.build_dps_xml(dps, validate=False)
+        root = etree.fromstring(xml.encode("utf-8"))
+        ns = {"n": "http://www.sped.fazenda.gov.br/nfse"}
+
+        inf_dps = root.find("n:infDPS", ns)
+        children = [etree.QName(c).localname for c in inf_dps]
+
+        assert "IBSCBS" in children
+        # IBSCBS deve vir depois de serv e valores, no mesmo nível
+        assert children.index("IBSCBS") > children.index("serv")
+        assert children.index("IBSCBS") > children.index("valores")
+
+        # serv não deve conter IBSCBS
+        serv_elem = inf_dps.find("n:serv", ns)
+        assert serv_elem.find("n:IBSCBS", ns) is None
+
+        # Confere os valores do grupo gIBSCBS
+        g_ibscbs = inf_dps.find("n:IBSCBS/n:valores/n:trib/n:gIBSCBS", ns)
+        assert g_ibscbs.find("n:CST", ns).text == "000"
+        assert g_ibscbs.find("n:cClassTrib", ns).text == "101001"
+
+    def test_ibscbs_valid_against_xsd_v101(
+        self, prestador_exemplo, tomador_exemplo, servico_exemplo
+    ):
+        """O grupo IBSCBS gerado deve validar contra o schema oficial v1.01"""
+        import xmlschema
+        from xmlschema.validators.exceptions import XMLSchemaValidationError
+
+        from src.nfse.models import IBSCBS, IBSCBSTributacao
+
+        xsd_path = Path(__file__).parent.parent / "schemas" / "DPS_v1.01.xsd"
+        if not xsd_path.exists():
+            pytest.skip("Schema DPS_v1.01.xsd não encontrado em schemas/")
+
+        tributacao = IBSCBSTributacao(cst="000", c_class_trib="101001")
+        ibscbs = IBSCBS(c_ind_op="000001", ind_dest="0", trib=tributacao)
+
+        dps = DPS(
+            prestador=prestador_exemplo,
+            tomador=tomador_exemplo,
+            servicos=[servico_exemplo],
+            numero_rps="100000000000001",
+            serie_rps="00001",
+            c_loc_emi="3550308",
+            ibscbs=ibscbs,
+        )
+
+        builder = XMLBuilder(versao="1.01")
+        xml = builder.build_dps_xml(dps, validate=False)
+        root = etree.fromstring(xml.encode("utf-8"))
+        ns = {"n": "http://www.sped.fazenda.gov.br/nfse"}
+        ibscbs_elem = root.find("n:infDPS/n:IBSCBS", ns)
+
+        schema = xmlschema.XMLSchema(str(xsd_path))
+        ibscbs_type = schema.types["TCRTCInfoIBSCBS"]
+        errors = [
+            e
+            for e in ibscbs_type.iter_decode(ibscbs_elem)
+            if isinstance(e, XMLSchemaValidationError)
+        ]
+        assert not errors, f"Grupo IBSCBS inválido contra o XSD 1.01: {errors}"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
