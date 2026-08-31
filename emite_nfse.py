@@ -112,14 +112,27 @@ def emite_nf(arquivo, dados):
     # ========================================================================
     # 1. DADOS DO PRESTADOR (EMISSOR DA NOTA)
     # ========================================================================
-    # cpf_cnpj/inscricao_municipal vêm do bloco "prestador" do JSON quando
-    # presente; os demais dados do prestador (razão social, Simples Nacional
-    # etc.) continuam fixos aqui, como já era antes.
-    prestador_json = dados.get("prestador", {})
+    # O gerador de RPS do am_manaus manda "prestador" como uma STRING só com
+    # o CNPJ (formato original/legado) — não como objeto {"cpf_cnpj":...}.
+    # Aceita os dois formatos: se vier um dict (formato novo, ainda não usado
+    # em produção), lê os campos de dentro dele; se vier string, usa direto
+    # como cpf_cnpj. A IM não tem campo próprio no JSON legado, então
+    # continua fixa aqui (ajuste se você emitir por mais de uma IM).
+    prestador_json = dados.get("prestador")
+    if isinstance(prestador_json, dict):
+        prestador_cpf_cnpj = prestador_json.get("cpf_cnpj", "20637193000101")
+        prestador_im = prestador_json.get("inscricao_municipal", "23086401")
+    elif isinstance(prestador_json, str) and prestador_json.strip():
+        prestador_cpf_cnpj = re.sub(r"\D", "", prestador_json)
+        prestador_im = "23086401"
+    else:
+        prestador_cpf_cnpj = "20637193000101"
+        prestador_im = "23086401"
+
     prestador = Prestador(
         # Obrigatório
-        cpf_cnpj=prestador_json.get("cpf_cnpj", "20637193000101"),  # CNPJ sem formatação
-        inscricao_municipal=prestador_json.get("inscricao_municipal", "23086401"),
+        cpf_cnpj=prestador_cpf_cnpj,  # CNPJ sem formatação
+        inscricao_municipal=prestador_im,
         #razao_social="COLEGIO VETOR LTDA",
         optante_simples_nacional=False,
         op_simp_nac=1,  # 1-Não Optante, 2-MEI, 3-ME/EPP
@@ -130,8 +143,21 @@ def emite_nf(arquivo, dados):
     # ========================================================================
     # Campos obrigatórios: cpf_cnpj
     # Campos opcionais: razao_social, endereco, telefone, email, inscricao_municipal
-    tomador_json = dados["tomador"]
-    endereco_json = tomador_json["endereco"]
+    #
+    # Formato legado (o que o am_manaus realmente gera): cpf/nome/email/
+    # endereco soltos na raiz do JSON. Se um bloco "tomador" (dict) existir,
+    # usa ele em vez disso — mas isso não é o que está em produção hoje.
+    tomador_json = dados.get("tomador")
+    if isinstance(tomador_json, dict):
+        tomador_cpf = tomador_json["cpf"]
+        tomador_nome = tomador_json["nome"]
+        tomador_email = tomador_json.get("email")
+        endereco_json = tomador_json["endereco"]
+    else:
+        tomador_cpf = dados["cpf"]
+        tomador_nome = dados["nome"]
+        tomador_email = dados.get("email")
+        endereco_json = dados["endereco"]
 
     endereco_tomador = Endereco(
         logradouro=endereco_json["logradouro"],
@@ -147,11 +173,11 @@ def emite_nf(arquivo, dados):
 
     tomador = Tomador(
         # Obrigatório
-        cpf_cnpj=tomador_json["cpf"],  # CPF/CNPJ sem formatação
+        cpf_cnpj=tomador_cpf,  # CPF/CNPJ sem formatação
         # Opcionais
-        razao_social=tomador_json["nome"],
+        razao_social=tomador_nome,
         endereco=endereco_tomador,
-        email=tomador_json.get("email") or None,
+        email=tomador_email or None,
     )
 
     # ========================================================================
@@ -162,6 +188,24 @@ def emite_nf(arquivo, dados):
     #                   iss_retido, codigo_municipio, tributos, codigo_nbs
 
     servico_json = dados["servicos"][0]
+
+    # cTribNac/cTribMun/cNBS: no JSON legado (o que o am_manaus gera) esses
+    # três códigos ficam soltos na RAIZ do documento, valendo pra nota
+    # inteira — não dentro de cada item de "servicos". Também aceita a
+    # variante por-serviço, em snake_case ou camelCase, caso algum dia o
+    # gerador passe a mandar assim.
+    def _campo(*chaves, obrigatorio=True):
+        for origem in (servico_json, dados):
+            for chave in chaves:
+                if chave in origem and origem[chave] not in (None, ""):
+                    return origem[chave]
+        if obrigatorio:
+            raise KeyError(chaves[0])
+        return None
+
+    c_trib_nac = _campo("c_trib_nac", "cTribNac")
+    c_trib_mun = _campo("c_trib_mun", "cTribMun")
+    c_nbs = _campo("c_nbs", "cNBS")
 
     # Corrigido: Decimal(float) herda o erro de precisão binária do float
     # (ex: Decimal(980.1) vira 980.099999999999909...). Usar Decimal(str(x))
@@ -180,23 +224,23 @@ def emite_nf(arquivo, dados):
         aliquota=Decimal(str(servico_json.get("aliq_iss", 0))),
         valor=Decimal(str(servico_json.get("valor_iss", 0))),
         base_calculo=Decimal(str(servico_json.get("base_iss", 0))),
-        codigo_tributacao=servico_json["c_trib_mun"],
+        codigo_tributacao=c_trib_mun,
         descricao="ISS",
     )
 
     servico = Servico(
         # Obrigatórios
-        codigo_servico=re.sub(r"\D", "", servico_json["c_trib_nac"]),  # Ver lista em https://www.gov.br/nfse/pt-br/mei-e-demais-empresas/codigos-de-tributacao-nacional-nbs
+        codigo_servico=re.sub(r"\D", "", c_trib_nac),  # Ver lista em https://www.gov.br/nfse/pt-br/mei-e-demais-empresas/codigos-de-tributacao-nacional-nbs
         descricao=servico_json["descricao"],
         valor_servico=valor_servico,  # Valor do serviço
-        codigo_tributacao_municipal=re.sub(r"\D", "", servico_json["c_trib_mun"]),
+        codigo_tributacao_municipal=re.sub(r"\D", "", c_trib_mun),
         # Opcionais - Valores
         valor_deducoes=valor_deducoes,
         valor_desconto=valor_desconto,
         # Opcionais - Tributação
         iss_retido=bool(servico_json.get("iss_retido", False)),
         codigo_municipio=dados.get("c_loc_emi", "1302603"),  # Código IBGE do município de prestação (Ver lista em https://www.ibge.gov.br/explica/codigos-dos-municipios.php)
-        codigo_nbs=re.sub(r"\D", "", servico_json["c_nbs"]),  # https://www.gov.br/mdic/pt-br/images/REPOSITORIO/scs/decos/NBS/Anexoa_Ia_NBSa_2.0a_coma_alteraa_esa_6.12.18.pdf
+        codigo_nbs=re.sub(r"\D", "", c_nbs),  # https://www.gov.br/mdic/pt-br/images/REPOSITORIO/scs/decos/NBS/Anexoa_Ia_NBSa_2.0a_coma_alteraa_esa_6.12.18.pdf
         tributos=[tributo_iss],
     )
 
@@ -313,3 +357,4 @@ def emite_nf(arquivo, dados):
 
 if __name__ == "__main__":
     main()
+
