@@ -296,7 +296,14 @@ def emite_nf(arquivo, dados):
     # - Compressão (gzip) e codificação (base64)
     # - Envio para a API da NFSe Nacional
     try:
-        resultado = emissor.emitir_nota(dps, validate_xml=False)
+        resultado = emissor.emitir_nota(
+            dps,
+            validate_xml=False,
+            # Salva uma cópia do XML assinado (o mesmo enviado ao webservice)
+            # em ./rps/xml_enviados/{ID do DPS}.xml — útil pra depurar erros
+            # retornados pela API sem precisar reconstruir o XML na mão.
+            salvar_xml_em="./rps/xml_enviados/",
+        )
         print("✓ Nota fiscal emitida com sucesso!")
         return resultado
 

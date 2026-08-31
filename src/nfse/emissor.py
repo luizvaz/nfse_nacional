@@ -2,7 +2,9 @@
 Classe principal que orquestra o fluxo completo de emissão de NFSe
 """
 
-from typing import Optional
+import os
+from pathlib import Path
+from typing import Optional, Union
 
 from .api_client import Ambiente, APIClient
 from .models import DPS
@@ -29,7 +31,12 @@ class NFSeEmissor:
         self.signer = XMLSigner(pfx_path, pfx_password)
         self.api_client = APIClient(ambiente, pfx_path, pfx_password)
 
-    def emitir_nota(self, dps: DPS, validate_xml: bool = False) -> dict:
+    def emitir_nota(
+        self,
+        dps: DPS,
+        validate_xml: bool = False,
+        salvar_xml_em: Optional[Union[str, Path]] = None,
+    ) -> dict:
         """
         Emite uma nota fiscal seguindo o fluxo completo:
         1. Constrói o XML do DPS
@@ -39,6 +46,12 @@ class NFSeEmissor:
         Args:
             dps: Objeto DPS com todos os dados da nota
             validate_xml: Se True, valida o XML contra o XSD antes de assinar
+            salvar_xml_em: Caminho de um arquivo (ou de um diretório) onde
+                salvar uma cópia do XML assinado — o mesmo conteúdo enviado
+                ao webservice, útil para depuração. Se apontar para um
+                diretório existente, o arquivo é salvo lá dentro com o nome
+                "{ID do DPS}.xml"; os diretórios intermediários são criados
+                automaticamente. Se omitido (padrão), nada é salvo em disco.
 
         Returns:
             Resposta da API com os dados da nota emitida
@@ -50,6 +63,28 @@ class NFSeEmissor:
         # Passo 2: Assinar XML
         print("Assinando XML com certificado digital...")
         xml_assinado = self.signer.sign_xml(xml_dps)
+
+        # Salva uma cópia do XML assinado, se solicitado — antes do envio,
+        # para que o arquivo fique disponível mesmo se a API rejeitar o DPS.
+        if salvar_xml_em:
+            destino = Path(salvar_xml_em)
+            # Trata como diretório se: já existe e é uma pasta, OU o caminho
+            # foi passado terminando em "/" (intenção explícita de pasta,
+            # mesmo que ela ainda não exista), OU não tem extensão de
+            # arquivo. Isso evita criar sem querer um arquivo sem extensão
+            # (ex.: "./rps/xml_enviados") quando a pasta ainda não existe.
+            eh_diretorio = (
+                destino.is_dir()
+                or str(salvar_xml_em).endswith(("/", os.sep))
+                or destino.suffix == ""
+            )
+            if eh_diretorio:
+                destino.mkdir(parents=True, exist_ok=True)
+                destino = destino / f"{dps.get_id()}.xml"
+            else:
+                destino.parent.mkdir(parents=True, exist_ok=True)
+            destino.write_text(xml_assinado, encoding="utf-8")
+            print(f"XML assinado salvo em: {destino}")
 
         # Passo 3: Enviar para API
         print("Enviando DPS para a API...")
