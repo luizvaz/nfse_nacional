@@ -120,20 +120,20 @@ def emite_nf(arquivo, dados):
     # continua fixa aqui (ajuste se você emitir por mais de uma IM).
     prestador_json = dados.get("prestador")
     if isinstance(prestador_json, dict):
-        prestador_cpf_cnpj = prestador_json.get("cpf_cnpj", "20637193000101")
-        prestador_im = prestador_json.get("inscricao_municipal", "23086401")
+        prestador_cpf_cnpj = prestador_json.get("cpf_cnpj", "00000000000191")
+        prestador_im = prestador_json.get("inscricao_municipal", "000000")
     elif isinstance(prestador_json, str) and prestador_json.strip():
         prestador_cpf_cnpj = re.sub(r"\D", "", prestador_json)
-        prestador_im = "23086401"
+        prestador_im = "000000"
     else:
-        prestador_cpf_cnpj = "20637193000101"
-        prestador_im = "23086401"
+        prestador_cpf_cnpj = "00000000000191"
+        prestador_im = "000000"
 
     prestador = Prestador(
         # Obrigatório
         cpf_cnpj=prestador_cpf_cnpj,  # CNPJ sem formatação
         inscricao_municipal=prestador_im,
-        #razao_social="COLEGIO VETOR LTDA",
+        #razao_social="EMPRESA EXEMPLO LTDA",
         optante_simples_nacional=False,
         op_simp_nac=1,  # 1-Não Optante, 2-MEI, 3-ME/EPP
     )
@@ -239,7 +239,7 @@ def emite_nf(arquivo, dados):
         valor_desconto=valor_desconto,
         # Opcionais - Tributação
         iss_retido=bool(servico_json.get("iss_retido", False)),
-        codigo_municipio=dados.get("c_loc_emi", "1302603"),  # Código IBGE do município de prestação (Ver lista em https://www.ibge.gov.br/explica/codigos-dos-municipios.php)
+        codigo_municipio=dados.get("c_loc_emi", "9999999"),  # Código IBGE do município de prestação (Ver lista em https://www.ibge.gov.br/explica/codigos-dos-municipios.php)
         codigo_nbs=re.sub(r"\D", "", c_nbs),  # https://www.gov.br/mdic/pt-br/images/REPOSITORIO/scs/decos/NBS/Anexoa_Ia_NBSa_2.0a_coma_alteraa_esa_6.12.18.pdf
         tributos=[tributo_iss],
     )
@@ -316,7 +316,7 @@ def emite_nf(arquivo, dados):
         numero_rps=dados["num_nf"].lstrip("0") or "0",  # Número do RPS (Recibo de Prestação de Serviço)
         serie_rps=dados.get("serie_rps", "00002"),  # Série do RPS (até 5 dígitos)
         data_emissao=datetime.strptime(dados["data_emissao"], "%d/%m/%Y"),
-        c_loc_emi=dados.get("c_loc_emi", "1302603"),  # Código IBGE do município emissor (obrigatório para gerar o ID)
+        c_loc_emi=dados.get("c_loc_emi", "9999999"),  # Código IBGE do município emissor (obrigatório para gerar o ID)
         # Opcionais - Configurações
         natureza_operacao=int(dados.get("natureza_operacao", 1)),  # 1-Tributação no município, 2-Tributação fora do município
         optante_simples_nacional=False,
