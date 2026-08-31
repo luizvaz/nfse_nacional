@@ -123,7 +123,9 @@ def montar_prestador(cnpj: str, inscricao_municipal: Optional[str] = None) -> Pr
     )
 
 
-def montar_id_dps(prestador: Prestador, numero_rps: int, serie: str, codigo_municipio: str) -> str:
+def montar_id_dps(
+    prestador: Prestador, numero_rps: int, serie: str, codigo_municipio: str
+) -> str:
     """
     Monta o identificador da DPS para um número de RPS.
 
@@ -248,7 +250,9 @@ def _parse_args(argv: Optional[list] = None) -> argparse.Namespace:
     parser.add_argument(
         "--inicio", type=int, required=True, help="Primeiro número de RPS (inclusive)."
     )
-    parser.add_argument("--fim", type=int, required=True, help="Último número de RPS (inclusive).")
+    parser.add_argument(
+        "--fim", type=int, required=True, help="Último número de RPS (inclusive)."
+    )
     parser.add_argument(
         "--cnpj",
         default=os.getenv("NFSE_CNPJ"),
@@ -263,7 +267,8 @@ def _parse_args(argv: Optional[list] = None) -> argparse.Namespace:
         "--municipio",
         default=os.getenv("NFSE_CODIGO_MUNICIPIO"),
         help=(
-            "Código IBGE do município emissor (7 dígitos). Padrão: variável NFSE_CODIGO_MUNICIPIO."
+            "Código IBGE do município emissor (7 dígitos). "
+            "Padrão: variável NFSE_CODIGO_MUNICIPIO."
         ),
     )
     parser.add_argument(
@@ -307,7 +312,8 @@ def main(argv: Optional[list] = None) -> int:
     # ------------------------------------------------------------------
     if not args.cnpj:
         print(
-            "Erro: informe o CNPJ/CPF do prestador com --cnpj ou defina a variável NFSE_CNPJ.",
+            "Erro: informe o CNPJ/CPF do prestador com --cnpj "
+            "ou defina a variável NFSE_CNPJ.",
             file=sys.stderr,
         )
         return EXIT_ERRO_CONFIG
@@ -332,7 +338,8 @@ def main(argv: Optional[list] = None) -> int:
     codigo_municipio = "".join(filter(str.isdigit, args.municipio))
     if len(codigo_municipio) != 7:
         print(
-            f"Erro: código de município inválido: {args.municipio!r}. O código IBGE tem 7 dígitos.",
+            f"Erro: código de município inválido: {args.municipio!r}. "
+            "O código IBGE tem 7 dígitos.",
             file=sys.stderr,
         )
         return EXIT_ERRO_CONFIG

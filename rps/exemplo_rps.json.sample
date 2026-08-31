@@ -1,0 +1,54 @@
+{
+  "prestador": {
+    "cpf_cnpj": "20637193000101",
+    "inscricao_municipal": "23086401"
+  },
+  "num_nf": "0000001746",
+  "serie_rps": "00002",
+  "referencia": "08/2026",
+  "data_emissao": "08/08/2026",
+  "data_vencimento": "10/08/2026",
+  "c_loc_emi": "1302603",
+  "natureza_operacao": 1,
+  "tomador": {
+    "cpf": "01809725291",
+    "nome": "THEREZINHA DE JESUS ALEIXO SANTOS FAZZIONI DE MELO",
+    "email": "TASMELOAMBIENTAL@GMAIL.COM",
+    "endereco": {
+      "logradouro": "RUA BENTO MACIEL",
+      "numero": "34",
+      "complemento": "CJ CELETRA",
+      "cep": "69057-300",
+      "bairro": "ADRIANOPOLIS",
+      "cidade": "1302603",
+      "uf": "AM"
+    }
+  },
+  "aluno": "CECILIA ALEIXO DE MELO LASMAR",
+  "servicos": [
+    {
+      "descricao": "MENSALIDADE DO CURSO",
+      "valor": 980.1,
+      "desconto": 0,
+      "deducoes": 0,
+      "iss_retido": false,
+      "base_iss": 980.1,
+      "aliq_iss": 0.05,
+      "valor_iss": 49.01,
+      "observacao": "REF. A PARCELA 08/2026, VENC 10/08/2026, ALUNO CECILIA ALEIXO DE MELO LASMAR, TURMA 9ANO-A-ADN.",
+      "c_trib_nac": "08.02.01",
+      "c_trib_mun": "100",
+      "c_nbs": "1.2205.20.00"
+    }
+  ],
+  "ibscbs": {
+    "fin_nfse": "0",
+    "ind_final": "1",
+    "c_ind_op": "100301",
+    "ind_dest": "0",
+    "trib": {
+      "cst": "000",
+      "c_class_trib": "000001"
+    }
+  }
+}

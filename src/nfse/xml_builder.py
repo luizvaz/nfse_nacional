@@ -347,9 +347,7 @@ class XMLBuilder:
 
         # IM - Inscrição Municipal (opcional)
         if tomador.inscricao_municipal:
-            etree.SubElement(
-                toma_elem, f"{{{self.NS_NFSE}}}IM"
-            ).text = tomador.inscricao_municipal.trim()
+            etree.SubElement(toma_elem, f"{{{self.NS_NFSE}}}IM").text = tomador.inscricao_municipal.trim()
 
         # xNome - Nome/Razão Social (obrigatório)
         if tomador.razao_social:
@@ -511,9 +509,9 @@ class XMLBuilder:
         tot_trib = etree.SubElement(trib, f"{{{self.NS_NFSE}}}totTrib")
         if dps.prestador.optante_simples_nacional:
             if dps.prestador.p_tot_trib_sn is not None:
-                etree.SubElement(
-                    tot_trib, f"{{{self.NS_NFSE}}}pTotTribSN"
-                ).text = self._format_decimal(dps.prestador.p_tot_trib_sn)
+                etree.SubElement(tot_trib, f"{{{self.NS_NFSE}}}pTotTribSN").text = self._format_decimal(
+                    dps.prestador.p_tot_trib_sn
+                )
         else:
             # Se não for optante do SN
             vTotTrib = etree.SubElement(tot_trib, f"{{{self.NS_NFSE}}}vTotTrib")
@@ -522,7 +520,7 @@ class XMLBuilder:
             etree.SubElement(vTotTrib, f"{{{self.NS_NFSE}}}vTotTribMun").text = "0.00"
 
             # Se não for optante do SN ou não tiver p_tot_trib_sn, usa indTotTrib=0
-            # etree.SubElement(tot_trib, f"{{{self.NS_NFSE}}}indTotTrib").text = "0"
+            #etree.SubElement(tot_trib, f"{{{self.NS_NFSE}}}indTotTrib").text = "0"
 
     def validate_xml(self, xml_string: str) -> bool:
         """
